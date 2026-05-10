@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  @apply bg-ink-950 text-slate-200 font-sans antialiased;
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(56, 189, 248, 0.08), transparent 40%),
+    radial-gradient(circle at 80% 90%, rgba(251, 191, 36, 0.06), transparent 40%);
+  background-attachment: fixed;
+}
+
+.note-stream {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.06em;
+}
+
+.note-stream .glyph {
+  display: inline-block;
+  padding: 0 0.35rem;
+  transition: color 200ms ease, opacity 200ms ease, transform 200ms ease;
+}
+
+.note-stream .glyph.upcoming  { @apply text-slate-500; }
+.note-stream .glyph.current   { @apply text-accent-400; transform: translateY(-1px); }
+.note-stream .glyph.correct   { @apply text-emerald-400; opacity: 0.55; }
+.note-stream .glyph.incorrect { @apply text-rose-400 underline decoration-rose-400; }
+
+.harm-key {
+  transition: fill 80ms ease, filter 80ms ease;
+}
+
+.harm-key.white {
+  fill: #f8fafc;
+  stroke: #0b0d12;
+  stroke-width: 1;
+}
+.harm-key.black {
+  fill: #0b0d12;
+  stroke: #0b0d12;
+  stroke-width: 1;
+}
+
+.harm-key.target.white  { fill: #fde68a; filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)); }
+.harm-key.target.black  { fill: #b45309; filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)); }
+
+.harm-key.active.white  { fill: #7dd3fc; }
+.harm-key.active.black  { fill: #0369a1; }
+
+.key-label {
+  pointer-events: none;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 7px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+.key-label.on-white { fill: #475569; }
+.key-label.on-black { fill: #cbd5e1; }
+.key-label.target   { fill: #1e293b; }
