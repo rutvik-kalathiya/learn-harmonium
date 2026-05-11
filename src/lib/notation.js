@@ -15,6 +15,13 @@ export const NOTATIONS = {
     // German notation: English B = H, English A# / B♭ = B.
     names: ['C', 'Cis', 'D', 'Dis', 'E', 'F', 'Fis', 'G', 'Gis', 'A', 'B', 'H'],
   },
+  numeric: {
+    id: 'numeric',
+    label: 'Numeric',
+    short: '123',
+    // 1..7 over the C major scale, sharps on the black keys.
+    names: ['1', '1#', '2', '2#', '3', '4', '4#', '5', '5#', '6', '6#', '7'],
+  },
 };
 
 export const PITCH_CLASSES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
