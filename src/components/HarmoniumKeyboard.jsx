@@ -1,5 +1,5 @@
 import {
-  PC_KEY_FOR_MIDI,
+  keycapLabel,
   KEYBOARD_MIDI_LOW,
   KEYBOARD_MIDI_HIGH,
   isBlackMidi,
@@ -61,7 +61,7 @@ export default function HarmoniumKeyboard({
           const sameClass =
             !target && targetPc != null && pc === targetPc;
           const active = activeMidis.has(midi);
-          const pcKey = PC_KEY_FOR_MIDI[midi];
+          const pcKey = keycapLabel(midi, notation);
           return (
             <g
               key={`w-${midi}`}
@@ -110,7 +110,7 @@ export default function HarmoniumKeyboard({
           const sameClass =
             !target && targetPc != null && pc === targetPc;
           const active = activeMidis.has(midi);
-          const pcKey = PC_KEY_FOR_MIDI[midi];
+          const pcKey = keycapLabel(midi, notation);
           return (
             <g
               key={`b-${midi}`}

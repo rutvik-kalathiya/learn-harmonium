@@ -25,6 +25,7 @@ const LESSON_LENGTH = 36;
 
 export default function App() {
   const [notation, setNotation] = useState('english');
+  const [mode, setMode] = useState('learn'); // 'learn' | 'play'
 
   // Lesson state
   const [progress, setProgress] = useState(initialProgress);
@@ -148,8 +149,7 @@ export default function App() {
         return;
       }
 
-      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      const midi = PC_KEY_MAP[k];
+      const midi = PC_KEY_MAP[e.code];
       if (midi == null) return;
       e.preventDefault();
 
@@ -179,8 +179,7 @@ export default function App() {
     };
 
     const onKeyUp = (e) => {
-      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      const midi = PC_KEY_MAP[k];
+      const midi = PC_KEY_MAP[e.code];
       if (midi == null) return;
       const { transpose: tr, octaveShift: oct, reeds: r } = cfgRef.current;
       noteOff(midi, { transpose: tr, octaveShift: oct, reeds: r });

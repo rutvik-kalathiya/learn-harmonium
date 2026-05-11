@@ -1,8 +1,13 @@
 import { NOTATIONS } from '../lib/notation.js';
 
-export default function Header({ notation, onNotationChange }) {
+const MODES = [
+  { id: 'learn', label: 'Learning' },
+  { id: 'play', label: 'Playing' },
+];
+
+export default function Header({ notation, onNotationChange, mode, onModeChange }) {
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b border-ink-700/50">
+    <header className="flex items-center justify-between px-6 py-4 border-b border-ink-700/50 gap-4 flex-wrap">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-500 to-warm-500 grid place-items-center text-ink-950 font-bold text-lg shadow-lg shadow-accent-600/20">
           ♪
@@ -14,7 +19,30 @@ export default function Header({ notation, onNotationChange }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-xs text-slate-500 mr-2">Notation</span>
+        <span className="text-xs text-slate-500 mr-1">Mode</span>
+        <div className="inline-flex bg-ink-800 border border-ink-700 rounded-lg p-0.5">
+          {MODES.map((m) => {
+            const active = m.id === mode;
+            return (
+              <button
+                key={m.id}
+                onClick={() => onModeChange(m.id)}
+                className={
+                  'px-3 py-1.5 text-sm rounded-md transition ' +
+                  (active
+                    ? 'bg-warm-500 text-ink-950 font-semibold'
+                    : 'text-slate-400 hover:text-slate-200')
+                }
+              >
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-slate-500 mr-1">Notation</span>
         <div className="inline-flex bg-ink-800 border border-ink-700 rounded-lg p-0.5">
           {Object.values(NOTATIONS).map((n) => {
             const active = n.id === notation;
