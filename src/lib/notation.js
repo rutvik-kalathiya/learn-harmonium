@@ -38,6 +38,7 @@ export const noteName = (pc, notationId) => {
 //   G3=55 … F5=77, spanning 14 white keys and 9 black keys.
 export const PC_KEY_MAP = {
   Backquote:    55, // G3   (US: `   DE: ^)
+  IntlBackslash: 55, // G3   alternative code on some German keyboards
   Digit1:       56, // G#3
   KeyQ:         57, // A3
   Digit2:       58, // A#3
@@ -77,6 +78,7 @@ export const CODE_FOR_MIDI = Object.entries(PC_KEY_MAP).reduce(
 export const KEYCAP_LABELS = {
   english: {
     Backquote: '`',
+    IntlBackslash: '`',
     Digit1: '1',
     Digit2: '2',
     Digit4: '4',
@@ -102,6 +104,7 @@ export const KEYCAP_LABELS = {
   },
   german: {
     Backquote: '^',
+    IntlBackslash: '^',
     Digit1: '1',
     Digit2: '2',
     Digit4: '4',
