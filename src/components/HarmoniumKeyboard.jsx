@@ -1,68 +1,72 @@
-import { noteName, KEY_FOR_PC, WHITE_PCS, BLACK_PCS } from '../lib/notation.js';
+import {
+  PC_KEY_FOR_MIDI,
+  KEYBOARD_MIDI_LOW,
+  KEYBOARD_MIDI_HIGH,
+  isBlackMidi,
+  midiToPc,
+  noteName,
+} from '../lib/notation.js';
 
-// Geometry (single octave). The component repeats the octave horizontally.
 const WHITE_W = 56;
 const WHITE_H = 220;
 const BLACK_W = 34;
 const BLACK_H = 138;
 
-// Pitch class → index among the 7 white keys (or null for black keys)
-const WHITE_INDEX = WHITE_PCS.reduce((acc, pc, i) => ({ ...acc, [pc]: i }), {});
-
-// X offset of each black key within an octave, measured from the start of the octave.
-// Black keys sit between two white keys.
-const BLACK_X = {
-  1: WHITE_W * 1 - BLACK_W / 2,   // C#  between C(0) and D(1)
-  3: WHITE_W * 2 - BLACK_W / 2,   // D#
-  6: WHITE_W * 4 - BLACK_W / 2,   // F#
-  8: WHITE_W * 5 - BLACK_W / 2,   // G#
-  10: WHITE_W * 6 - BLACK_W / 2,  // A#
+// Build the static layout once at import time. For each MIDI note in range,
+// figure out whether it's a white or black key and compute its x offset.
+const buildLayout = () => {
+  const whites = [];
+  const blacks = [];
+  let whiteIndex = 0;
+  for (let midi = KEYBOARD_MIDI_LOW; midi <= KEYBOARD_MIDI_HIGH; midi += 1) {
+    if (isBlackMidi(midi)) {
+      // Black keys sit between two adjacent white keys. After whiteIndex - 1
+      // increments, the next white key would render at whiteIndex * WHITE_W;
+      // place the black key centered there.
+      blacks.push({ midi, x: whiteIndex * WHITE_W - BLACK_W / 2 });
+    } else {
+      whites.push({ midi, x: whiteIndex * WHITE_W });
+      whiteIndex += 1;
+    }
+  }
+  return { whites, blacks, whiteCount: whiteIndex };
 };
 
+const LAYOUT = buildLayout();
+
 export default function HarmoniumKeyboard({
-  octaves = 2,
+  targetMidi = null,
   targetPc = null,
-  activePcs = new Set(),
+  activeMidis = new Set(),
   notation = 'english',
   onPress = null,
 }) {
-  const octaveW = WHITE_W * 7;
-  const width = octaveW * octaves;
+  const width = LAYOUT.whiteCount * WHITE_W;
   const height = WHITE_H + 16;
-
-  const whites = [];
-  const blacks = [];
-
-  for (let o = 0; o < octaves; o += 1) {
-    WHITE_PCS.forEach((pc) => {
-      const x = o * octaveW + WHITE_INDEX[pc] * WHITE_W;
-      whites.push({ pc, x, octave: o });
-    });
-    BLACK_PCS.forEach((pc) => {
-      const x = o * octaveW + BLACK_X[pc];
-      blacks.push({ pc, x, octave: o });
-    });
-  }
-
-  const isTarget = (pc, octave) => targetPc === pc && octave === 0;
-  const isActive = (pc) => activePcs.has(pc);
 
   return (
     <div className="w-full overflow-x-auto px-6 pb-6">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="w-full max-w-[920px] mx-auto block"
+        className="w-full max-w-[1000px] mx-auto block"
         style={{ filter: 'drop-shadow(0 12px 24px rgba(0,0,0,0.35))' }}
       >
         <rect x="0" y="0" width={width} height="6" fill="#7c2d12" />
         <rect x="0" y={WHITE_H + 8} width={width} height="8" fill="#7c2d12" />
 
-        {whites.map(({ pc, x, octave }, i) => {
-          const target = isTarget(pc, octave);
-          const active = isActive(pc);
-          const pcKey = KEY_FOR_PC[pc];
+        {LAYOUT.whites.map(({ midi, x }) => {
+          const pc = midiToPc(midi);
+          const target = targetMidi != null && midi === targetMidi;
+          const sameClass =
+            !target && targetPc != null && pc === targetPc;
+          const active = activeMidis.has(midi);
+          const pcKey = PC_KEY_FOR_MIDI[midi];
           return (
-            <g key={`w-${i}`} onMouseDown={() => onPress?.(pc, octave)} style={{ cursor: onPress ? 'pointer' : 'default' }}>
+            <g
+              key={`w-${midi}`}
+              onMouseDown={() => onPress?.(midi)}
+              style={{ cursor: onPress ? 'pointer' : 'default' }}
+            >
               <rect
                 x={x + 1}
                 y={8}
@@ -72,7 +76,8 @@ export default function HarmoniumKeyboard({
                 className={
                   'harm-key white' +
                   (target ? ' target' : '') +
-                  (active ? ' active' : '')
+                  (active ? ' active' : '') +
+                  (sameClass ? ' hint' : '')
                 }
               />
               <text
@@ -82,26 +87,33 @@ export default function HarmoniumKeyboard({
               >
                 {noteName(pc, notation)}
               </text>
-              {octave === 0 && pcKey && (
+              {pcKey && (
                 <text
                   x={x + WHITE_W / 2}
                   y={WHITE_H - 18}
                   className={'key-label ' + (target ? 'target' : 'on-white')}
                   style={{ fontSize: 9 }}
                 >
-                  {pcKey.toUpperCase()}
+                  {pcKey}
                 </text>
               )}
             </g>
           );
         })}
 
-        {blacks.map(({ pc, x, octave }, i) => {
-          const target = isTarget(pc, octave);
-          const active = isActive(pc);
-          const pcKey = KEY_FOR_PC[pc];
+        {LAYOUT.blacks.map(({ midi, x }) => {
+          const pc = midiToPc(midi);
+          const target = targetMidi != null && midi === targetMidi;
+          const sameClass =
+            !target && targetPc != null && pc === targetPc;
+          const active = activeMidis.has(midi);
+          const pcKey = PC_KEY_FOR_MIDI[midi];
           return (
-            <g key={`b-${i}`} onMouseDown={() => onPress?.(pc, octave)} style={{ cursor: onPress ? 'pointer' : 'default' }}>
+            <g
+              key={`b-${midi}`}
+              onMouseDown={() => onPress?.(midi)}
+              style={{ cursor: onPress ? 'pointer' : 'default' }}
+            >
               <rect
                 x={x}
                 y={8}
@@ -111,7 +123,8 @@ export default function HarmoniumKeyboard({
                 className={
                   'harm-key black' +
                   (target ? ' target' : '') +
-                  (active ? ' active' : '')
+                  (active ? ' active' : '') +
+                  (sameClass ? ' hint' : '')
                 }
               />
               <text
@@ -121,14 +134,14 @@ export default function HarmoniumKeyboard({
               >
                 {noteName(pc, notation)}
               </text>
-              {octave === 0 && pcKey && (
+              {pcKey && (
                 <text
                   x={x + BLACK_W / 2}
                   y={BLACK_H - 16}
                   className={'key-label ' + (target ? 'target' : 'on-black')}
                   style={{ fontSize: 8 }}
                 >
-                  {pcKey.toUpperCase()}
+                  {pcKey}
                 </text>
               )}
             </g>

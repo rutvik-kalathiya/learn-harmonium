@@ -4,13 +4,19 @@ import KeyRow from './components/KeyRow.jsx';
 import StatusBar from './components/StatusBar.jsx';
 import NoteStream from './components/NoteStream.jsx';
 import HarmoniumKeyboard from './components/HarmoniumKeyboard.jsx';
-import { PC_KEY_MAP } from './lib/notation.js';
+import Controls from './components/Controls.jsx';
+import { PC_KEY_MAP, midiToPc, targetMidiForPc } from './lib/notation.js';
 import {
   DEFAULT_UNLOCK_ORDER,
   generateLesson,
   initialProgress,
 } from './lib/lessons.js';
-import { playNote, prewarmAudio } from './lib/audio.js';
+import {
+  playNote,
+  prewarmAudio,
+  setMasterVolume,
+  setReverbEnabled,
+} from './lib/audio.js';
 
 const ACCURACY_UNLOCK = 0.9;
 const LESSON_LENGTH = 36;
@@ -18,6 +24,7 @@ const LESSON_LENGTH = 36;
 export default function App() {
   const [notation, setNotation] = useState('english');
 
+  // Lesson state
   const [progress, setProgress] = useState(initialProgress);
   const [active, setActive] = useState(false);
   const [notes, setNotes] = useState(() =>
@@ -29,13 +36,27 @@ export default function App() {
   );
   const [index, setIndex] = useState(0);
   const [history, setHistory] = useState([]);
-  const [activePcs, setActivePcs] = useState(() => new Set());
+  const [activeMidis, setActiveMidis] = useState(() => new Set());
 
+  // Stats
   const [score, setScore] = useState(0);
   const [sessionHits, setSessionHits] = useState(0);
   const [sessionMisses, setSessionMisses] = useState(0);
   const startTimeRef = useRef(null);
   const [elapsedMs, setElapsedMs] = useState(0);
+
+  // Harmonium controls
+  const [transpose, setTranspose] = useState(0);
+  const [octave, setOctave] = useState(3);     // 3 = no shift (matches original)
+  const [reeds, setReeds] = useState(0);
+  const [volume, setVolume] = useState(0.55);
+  const [reverb, setReverb] = useState(true);
+
+  const octaveShift = octave - 3;
+
+  // Push volume / reverb changes into the audio engine.
+  useEffect(() => { setMasterVolume(volume); }, [volume]);
+  useEffect(() => { setReverbEnabled(reverb); }, [reverb]);
 
   const accuracy = useMemo(() => {
     const total = sessionHits + sessionMisses;
@@ -49,7 +70,9 @@ export default function App() {
 
   const goalPct = Math.min(1, elapsedMs / (30 * 60_000));
 
-  const currentTarget = index < notes.length ? notes[index] : null;
+  const currentTargetPc = index < notes.length ? notes[index] : null;
+  const currentTargetMidi =
+    currentTargetPc != null ? targetMidiForPc(currentTargetPc) : null;
 
   const reshuffle = useCallback((p) => {
     setNotes(
@@ -63,6 +86,7 @@ export default function App() {
     setHistory([]);
   }, []);
 
+  // End-of-lesson handoff: maybe unlock next key, then reshuffle.
   useEffect(() => {
     if (index < notes.length) return;
     const total = history.length;
@@ -98,6 +122,15 @@ export default function App() {
     return () => clearInterval(id);
   }, [active]);
 
+  // Keep the latest config in a ref so the keydown handler doesn't need to
+  // re-register on every slider tick.
+  const cfgRef = useRef({ transpose, octaveShift, reeds });
+  cfgRef.current = { transpose, octaveShift, reeds };
+  const targetRef = useRef(currentTargetPc);
+  targetRef.current = currentTargetPc;
+  const activeRef = useRef(active);
+  activeRef.current = active;
+
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.repeat) return;
@@ -112,22 +145,25 @@ export default function App() {
         return;
       }
 
-      if (!active) return;
-      const k = e.key.toLowerCase();
-      const pc = PC_KEY_MAP[k];
-      if (pc == null) return;
+      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      const midi = PC_KEY_MAP[k];
+      if (midi == null) return;
       e.preventDefault();
 
-      playNote(pc);
-      setActivePcs((prev) => {
+      const { transpose: tr, octaveShift: oct, reeds: r } = cfgRef.current;
+      playNote(midi, { transpose: tr, octaveShift: oct, reeds: r });
+
+      setActiveMidis((prev) => {
         const next = new Set(prev);
-        next.add(pc);
+        next.add(midi);
         return next;
       });
 
-      const target = currentTarget;
+      if (!activeRef.current) return;
+      const target = targetRef.current;
       if (target == null) return;
-      const correct = pc === target;
+      const pressedPc = midiToPc(midi);
+      const correct = pressedPc === target;
       setHistory((h) => [...h, correct]);
       setIndex((i) => i + 1);
       if (correct) {
@@ -140,12 +176,12 @@ export default function App() {
     };
 
     const onKeyUp = (e) => {
-      const k = e.key.toLowerCase();
-      const pc = PC_KEY_MAP[k];
-      if (pc == null) return;
-      setActivePcs((prev) => {
+      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      const midi = PC_KEY_MAP[k];
+      if (midi == null) return;
+      setActiveMidis((prev) => {
         const next = new Set(prev);
-        next.delete(pc);
+        next.delete(midi);
         return next;
       });
     };
@@ -156,7 +192,7 @@ export default function App() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [active, currentTarget]);
+  }, []);
 
   const onResetSession = () => {
     setScore(0);
@@ -201,20 +237,49 @@ export default function App() {
           />
 
           <HarmoniumKeyboard
-            octaves={2}
-            targetPc={currentTarget}
-            activePcs={activePcs}
+            targetMidi={currentTargetMidi}
+            targetPc={currentTargetPc}
+            activeMidis={activeMidis}
             notation={notation}
-            onPress={(pc, octave) => {
+            onPress={(midi) => {
               prewarmAudio();
-              playNote(pc, { octaveShift: octave });
+              const { transpose: tr, octaveShift: oct, reeds: r } = cfgRef.current;
+              playNote(midi, { transpose: tr, octaveShift: oct, reeds: r });
+              if (!activeRef.current) return;
+              const target = targetRef.current;
+              if (target == null) return;
+              const pressedPc = midiToPc(midi);
+              const correct = pressedPc === target;
+              setHistory((h) => [...h, correct]);
+              setIndex((i) => i + 1);
+              if (correct) {
+                setSessionHits((n) => n + 1);
+                setScore((s) => s + 10);
+              } else {
+                setSessionMisses((n) => n + 1);
+                setScore((s) => Math.max(0, s - 3));
+              }
             }}
           />
         </div>
 
+        <Controls
+          transpose={transpose}
+          setTranspose={setTranspose}
+          octave={octave}
+          setOctave={setOctave}
+          reeds={reeds}
+          setReeds={setReeds}
+          volume={volume}
+          setVolume={setVolume}
+          reverb={reverb}
+          setReverb={setReverb}
+          notation={notation}
+        />
+
         <footer className="flex items-center justify-between px-6 py-3 border-t border-ink-700/40 text-xs text-slate-500">
           <div>
-            Play the highlighted key with your computer keyboard — lower row hits white keys, upper row hits black keys.
+            Play the highlighted key with your computer keyboard — the binding is printed on each SVG key.
           </div>
           <div className="flex items-center gap-3">
             <button

@@ -49,6 +49,9 @@ body {
 .harm-key.target.white  { fill: #fde68a; filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)); }
 .harm-key.target.black  { fill: #b45309; filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)); }
 
+.harm-key.hint.white    { fill: #fef3c7; }
+.harm-key.hint.black    { fill: #78350f; }
+
 .harm-key.active.white  { fill: #7dd3fc; }
 .harm-key.active.black  { fill: #0369a1; }
 
