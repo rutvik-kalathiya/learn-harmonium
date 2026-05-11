@@ -6,6 +6,7 @@ import NoteStream from './components/NoteStream.jsx';
 import HarmoniumKeyboard from './components/HarmoniumKeyboard.jsx';
 import Controls from './components/Controls.jsx';
 import Library from './components/Library.jsx';
+import Footer from './components/Footer.jsx';
 import { PC_KEY_MAP, midiToPc, targetMidiForPc } from './lib/notation.js';
 import {
   DEFAULT_UNLOCK_ORDER,
@@ -268,7 +269,7 @@ export default function App() {
   const isLibrary = mode === 'library';
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-[100dvh] flex-1 flex-col">
       <Header
         notation={notation}
         onNotationChange={setNotation}
@@ -276,7 +277,7 @@ export default function App() {
         onModeChange={onModeChange}
       />
 
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col min-h-0">
         {isLibrary && (
           <Library notation={notation} onPractice={onPractice} />
         )}
@@ -395,34 +396,13 @@ export default function App() {
           notation={notation}
         />
         )}
-
-        {!isLibrary && (
-        <footer className="flex items-center justify-between px-6 py-3 border-t border-ink-700/40 text-xs text-slate-500">
-          <div>
-            {isLearn
-              ? 'Play the highlighted key with your computer keyboard — the binding is printed on each SVG key.'
-              : 'Free play — every key is yours. Same bindings as Learning mode.'}
-          </div>
-          <div className="flex items-center gap-3">
-            {isLearn && (
-              <>
-                <button
-                  onClick={onResetSession}
-                  className="px-3 py-1.5 rounded-md bg-ink-800 border border-ink-700 hover:border-ink-600 text-slate-300"
-                >
-                  Reset session
-                </button>
-                <span>
-                  <kbd className="px-1.5 py-0.5 mx-0.5 bg-ink-800 border border-ink-700 rounded text-xs">Enter</kbd> start
-                  ·
-                  <kbd className="px-1.5 py-0.5 mx-0.5 bg-ink-800 border border-ink-700 rounded text-xs">Esc</kbd> pause
-                </span>
-              </>
-            )}
-          </div>
-        </footer>
-        )}
       </main>
+
+      <Footer
+        isLibrary={isLibrary}
+        isLearn={isLearn}
+        onResetSession={onResetSession}
+      />
     </div>
   );
 }
