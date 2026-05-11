@@ -133,6 +133,8 @@ export default function App() {
   targetRef.current = currentTargetPc;
   const activeRef = useRef(active);
   activeRef.current = active;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -162,6 +164,7 @@ export default function App() {
         return next;
       });
 
+      if (modeRef.current !== 'learn') return;
       if (!activeRef.current) return;
       const target = targetRef.current;
       if (target == null) return;
@@ -207,42 +210,68 @@ export default function App() {
     reshuffle(progress);
   };
 
+  const onModeChange = (next) => {
+    if (next === mode) return;
+    allNotesOff();
+    setActiveMidis(new Set());
+    if (next === 'play') setActive(false);
+    setMode(next);
+  };
+
+  const isLearn = mode === 'learn';
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Header notation={notation} onNotationChange={setNotation} />
+      <Header
+        notation={notation}
+        onNotationChange={setNotation}
+        mode={mode}
+        onModeChange={onModeChange}
+      />
 
       <main className="flex-1 flex flex-col">
-        <StatusBar
-          npm={npm}
-          accuracy={accuracy}
-          score={score}
-          goalPct={goalPct}
-        />
+        {isLearn && (
+          <>
+            <StatusBar
+              npm={npm}
+              accuracy={accuracy}
+              score={score}
+              goalPct={goalPct}
+            />
 
-        <KeyRow
-          unlocked={progress.unlocked}
-          currentKey={progress.currentKey}
-          notation={notation}
-        />
+            <KeyRow
+              unlocked={progress.unlocked}
+              currentKey={progress.currentKey}
+              notation={notation}
+            />
+          </>
+        )}
 
         <div
-          className="flex-1 flex flex-col justify-center cursor-text"
-          onClick={() => {
-            prewarmAudio();
-            setActive(true);
-          }}
+          className={
+            'flex-1 flex flex-col justify-center ' +
+            (isLearn ? 'cursor-text' : '')
+          }
+          onClick={isLearn ? () => { prewarmAudio(); setActive(true); } : undefined}
         >
-          <NoteStream
-            notes={notes}
-            index={index}
-            history={history}
-            notation={notation}
-            active={active}
-          />
+          {isLearn ? (
+            <NoteStream
+              notes={notes}
+              index={index}
+              history={history}
+              notation={notation}
+              active={active}
+            />
+          ) : (
+            <div className="text-center pt-6 pb-2 text-slate-500 text-sm">
+              Free play — no lesson, no scoring. Use your keyboard, mouse, or
+              the controls below.
+            </div>
+          )}
 
           <HarmoniumKeyboard
-            targetMidi={currentTargetMidi}
-            targetPc={currentTargetPc}
+            targetMidi={isLearn ? currentTargetMidi : null}
+            targetPc={isLearn ? currentTargetPc : null}
             activeMidis={activeMidis}
             notation={notation}
             onPress={(midi) => {
@@ -254,6 +283,7 @@ export default function App() {
                 next.add(midi);
                 return next;
               });
+              if (modeRef.current !== 'learn') return;
               if (!activeRef.current) return;
               const target = targetRef.current;
               if (target == null) return;
@@ -298,20 +328,26 @@ export default function App() {
 
         <footer className="flex items-center justify-between px-6 py-3 border-t border-ink-700/40 text-xs text-slate-500">
           <div>
-            Play the highlighted key with your computer keyboard — the binding is printed on each SVG key.
+            {isLearn
+              ? 'Play the highlighted key with your computer keyboard — the binding is printed on each SVG key.'
+              : 'Free play — every key is yours. Same bindings as Learning mode.'}
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={onResetSession}
-              className="px-3 py-1.5 rounded-md bg-ink-800 border border-ink-700 hover:border-ink-600 text-slate-300"
-            >
-              Reset session
-            </button>
-            <span>
-              <kbd className="px-1.5 py-0.5 mx-0.5 bg-ink-800 border border-ink-700 rounded text-xs">Enter</kbd> start
-              ·
-              <kbd className="px-1.5 py-0.5 mx-0.5 bg-ink-800 border border-ink-700 rounded text-xs">Esc</kbd> pause
-            </span>
+            {isLearn && (
+              <>
+                <button
+                  onClick={onResetSession}
+                  className="px-3 py-1.5 rounded-md bg-ink-800 border border-ink-700 hover:border-ink-600 text-slate-300"
+                >
+                  Reset session
+                </button>
+                <span>
+                  <kbd className="px-1.5 py-0.5 mx-0.5 bg-ink-800 border border-ink-700 rounded text-xs">Enter</kbd> start
+                  ·
+                  <kbd className="px-1.5 py-0.5 mx-0.5 bg-ink-800 border border-ink-700 rounded text-xs">Esc</kbd> pause
+                </span>
+              </>
+            )}
           </div>
         </footer>
       </main>
