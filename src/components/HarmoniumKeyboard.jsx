@@ -40,6 +40,7 @@ export default function HarmoniumKeyboard({
   activeMidis = new Set(),
   notation = 'english',
   onPress = null,
+  onRelease = null,
 }) {
   const width = LAYOUT.whiteCount * WHITE_W;
   const height = WHITE_H + 16;
@@ -64,7 +65,9 @@ export default function HarmoniumKeyboard({
           return (
             <g
               key={`w-${midi}`}
-              onMouseDown={() => onPress?.(midi)}
+              onMouseDown={(e) => { e.preventDefault(); onPress?.(midi); }}
+              onMouseUp={() => onRelease?.(midi)}
+              onMouseLeave={() => onRelease?.(midi)}
               style={{ cursor: onPress ? 'pointer' : 'default' }}
             >
               <rect
@@ -111,7 +114,9 @@ export default function HarmoniumKeyboard({
           return (
             <g
               key={`b-${midi}`}
-              onMouseDown={() => onPress?.(midi)}
+              onMouseDown={(e) => { e.preventDefault(); onPress?.(midi); }}
+              onMouseUp={() => onRelease?.(midi)}
+              onMouseLeave={() => onRelease?.(midi)}
               style={{ cursor: onPress ? 'pointer' : 'default' }}
             >
               <rect

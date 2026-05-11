@@ -12,7 +12,9 @@ import {
   initialProgress,
 } from './lib/lessons.js';
 import {
-  playNote,
+  noteOn,
+  noteOff,
+  allNotesOff,
   prewarmAudio,
   setMasterVolume,
   setReverbEnabled,
@@ -141,6 +143,7 @@ export default function App() {
         return;
       }
       if (e.key === 'Escape') {
+        allNotesOff();
         setActive(false);
         return;
       }
@@ -151,7 +154,7 @@ export default function App() {
       e.preventDefault();
 
       const { transpose: tr, octaveShift: oct, reeds: r } = cfgRef.current;
-      playNote(midi, { transpose: tr, octaveShift: oct, reeds: r });
+      noteOn(midi, { transpose: tr, octaveShift: oct, reeds: r });
 
       setActiveMidis((prev) => {
         const next = new Set(prev);
@@ -179,6 +182,8 @@ export default function App() {
       const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
       const midi = PC_KEY_MAP[k];
       if (midi == null) return;
+      const { transpose: tr, octaveShift: oct, reeds: r } = cfgRef.current;
+      noteOff(midi, { transpose: tr, octaveShift: oct, reeds: r });
       setActiveMidis((prev) => {
         const next = new Set(prev);
         next.delete(midi);
@@ -244,7 +249,12 @@ export default function App() {
             onPress={(midi) => {
               prewarmAudio();
               const { transpose: tr, octaveShift: oct, reeds: r } = cfgRef.current;
-              playNote(midi, { transpose: tr, octaveShift: oct, reeds: r });
+              noteOn(midi, { transpose: tr, octaveShift: oct, reeds: r });
+              setActiveMidis((prev) => {
+                const next = new Set(prev);
+                next.add(midi);
+                return next;
+              });
               if (!activeRef.current) return;
               const target = targetRef.current;
               if (target == null) return;
@@ -259,6 +269,16 @@ export default function App() {
                 setSessionMisses((n) => n + 1);
                 setScore((s) => Math.max(0, s - 3));
               }
+            }}
+            onRelease={(midi) => {
+              const { transpose: tr, octaveShift: oct, reeds: r } = cfgRef.current;
+              noteOff(midi, { transpose: tr, octaveShift: oct, reeds: r });
+              setActiveMidis((prev) => {
+                if (!prev.has(midi)) return prev;
+                const next = new Set(prev);
+                next.delete(midi);
+                return next;
+              });
             }}
           />
         </div>
