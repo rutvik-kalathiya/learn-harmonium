@@ -3,6 +3,7 @@ import { NOTATIONS } from '../lib/notation.js';
 const MODES = [
   { id: 'learn', label: 'Learning' },
   { id: 'play', label: 'Playing' },
+  { id: 'library', label: 'Library' },
 ];
 
 export default function Header({ notation, onNotationChange, mode, onModeChange }) {

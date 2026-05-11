@@ -5,6 +5,7 @@ import StatusBar from './components/StatusBar.jsx';
 import NoteStream from './components/NoteStream.jsx';
 import HarmoniumKeyboard from './components/HarmoniumKeyboard.jsx';
 import Controls from './components/Controls.jsx';
+import Library from './components/Library.jsx';
 import { PC_KEY_MAP, midiToPc, targetMidiForPc } from './lib/notation.js';
 import {
   DEFAULT_UNLOCK_ORDER,
@@ -25,7 +26,10 @@ const LESSON_LENGTH = 36;
 
 export default function App() {
   const [notation, setNotation] = useState('english');
-  const [mode, setMode] = useState('learn'); // 'learn' | 'play'
+  const [mode, setMode] = useState('learn'); // 'learn' | 'play' | 'library'
+  // When non-null, learn mode runs a fixed practice script instead of a
+  // randomly generated lesson and never unlocks new keys.
+  const [practiceScript, setPracticeScript] = useState(null);
 
   // Lesson state
   const [progress, setProgress] = useState(initialProgress);
@@ -77,23 +81,36 @@ export default function App() {
   const currentTargetMidi =
     currentTargetPc != null ? targetMidiForPc(currentTargetPc) : null;
 
-  const reshuffle = useCallback((p) => {
-    setNotes(
-      generateLesson({
-        unlocked: p.unlocked,
-        currentKey: p.currentKey,
-        length: LESSON_LENGTH,
-      })
-    );
+  const reshuffle = useCallback((p, script = null) => {
+    if (script) {
+      setNotes([...script.pattern]);
+    } else {
+      setNotes(
+        generateLesson({
+          unlocked: p.unlocked,
+          currentKey: p.currentKey,
+          length: LESSON_LENGTH,
+        })
+      );
+    }
     setIndex(0);
     setHistory([]);
   }, []);
 
-  // End-of-lesson handoff: maybe unlock next key, then reshuffle.
+  // End-of-lesson handoff. In practice mode just loop the script; otherwise
+  // maybe unlock the next key and reshuffle a fresh random lesson.
   useEffect(() => {
     if (index < notes.length) return;
     const total = history.length;
     if (total === 0) return;
+
+    if (practiceScript) {
+      setNotes([...practiceScript.pattern]);
+      setIndex(0);
+      setHistory([]);
+      return;
+    }
+
     const correct = history.filter(Boolean).length;
     const sessionAcc = correct / total;
 
@@ -114,7 +131,7 @@ export default function App() {
       reshuffle(next);
       return next;
     });
-  }, [index, notes.length, history, reshuffle]);
+  }, [index, notes.length, history, reshuffle, practiceScript]);
 
   useEffect(() => {
     if (!active) return;
@@ -201,24 +218,54 @@ export default function App() {
     };
   }, []);
 
-  const onResetSession = () => {
+  const resetStats = () => {
     setScore(0);
     setSessionHits(0);
     setSessionMisses(0);
     setElapsedMs(0);
     startTimeRef.current = null;
-    reshuffle(progress);
+  };
+
+  const onResetSession = () => {
+    resetStats();
+    reshuffle(progress, practiceScript);
   };
 
   const onModeChange = (next) => {
     if (next === mode) return;
     allNotesOff();
     setActiveMidis(new Set());
-    if (next === 'play') setActive(false);
+    if (next !== 'learn') setActive(false);
+    // Explicit mode toggles exit practice — Library is the only way back in.
+    if (practiceScript) {
+      setPracticeScript(null);
+      if (next === 'learn') reshuffle(progress);
+    }
     setMode(next);
   };
 
+  const onPractice = (script) => {
+    allNotesOff();
+    setActiveMidis(new Set());
+    setPracticeScript(script);
+    reshuffle(progress, script);
+    resetStats();
+    setMode('learn');
+    setActive(false);
+  };
+
+  const onExitPractice = () => {
+    setPracticeScript(null);
+    reshuffle(progress);
+    resetStats();
+    setMode('library');
+    allNotesOff();
+    setActiveMidis(new Set());
+    setActive(false);
+  };
+
   const isLearn = mode === 'learn';
+  const isLibrary = mode === 'library';
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -230,7 +277,11 @@ export default function App() {
       />
 
       <main className="flex-1 flex flex-col">
-        {isLearn && (
+        {isLibrary && (
+          <Library notation={notation} onPractice={onPractice} />
+        )}
+
+        {!isLibrary && isLearn && (
           <>
             <StatusBar
               npm={npm}
@@ -239,14 +290,30 @@ export default function App() {
               goalPct={goalPct}
             />
 
-            <KeyRow
-              unlocked={progress.unlocked}
-              currentKey={progress.currentKey}
-              notation={notation}
-            />
+            {practiceScript ? (
+              <div className="mx-6 mt-2 px-4 py-2 rounded-lg bg-warm-500/10 border border-warm-500/40 flex items-center justify-between gap-3">
+                <div className="text-sm text-warm-200">
+                  <span className="text-warm-300 font-semibold">Practicing:</span>{' '}
+                  {practiceScript.name}
+                </div>
+                <button
+                  onClick={onExitPractice}
+                  className="text-xs px-2 py-1 rounded-md bg-ink-800 border border-ink-700 text-slate-300 hover:border-ink-600"
+                >
+                  Back to Library
+                </button>
+              </div>
+            ) : (
+              <KeyRow
+                unlocked={progress.unlocked}
+                currentKey={progress.currentKey}
+                notation={notation}
+              />
+            )}
           </>
         )}
 
+        {!isLibrary && (
         <div
           className={
             'flex-1 flex flex-col justify-center ' +
@@ -311,7 +378,9 @@ export default function App() {
             }}
           />
         </div>
+        )}
 
+        {!isLibrary && (
         <Controls
           transpose={transpose}
           setTranspose={setTranspose}
@@ -325,7 +394,9 @@ export default function App() {
           setReverb={setReverb}
           notation={notation}
         />
+        )}
 
+        {!isLibrary && (
         <footer className="flex items-center justify-between px-6 py-3 border-t border-ink-700/40 text-xs text-slate-500">
           <div>
             {isLearn
@@ -350,6 +421,7 @@ export default function App() {
             )}
           </div>
         </footer>
+        )}
       </main>
     </div>
   );
