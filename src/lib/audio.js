@@ -31,6 +31,13 @@ let reverbLoading = null;
 // so noteOff can fade out cleanly.
 const voices = new Map();
 
+// After `await loadSample()`, block starting new voices (e.g. Library mode
+// or other UI where PC key "noteOn" must not sound).
+let pcInstrumentBlocked = false;
+export const setPcInstrumentBlocked = (blocked) => {
+  pcInstrumentBlocked = blocked;
+};
+
 const ensureContext = () => {
   if (ctx) return ctx;
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -122,6 +129,7 @@ export const noteOn = async (
   if (!c) return;
   const buf = await loadSample();
   if (!buf) return;
+  if (pcInstrumentBlocked) return;
 
   const baseMidi = midi + transpose + octaveShift * 12;
   const triggerVoice = (voiceMidi, reedIndex) => {

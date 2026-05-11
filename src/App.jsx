@@ -20,10 +20,26 @@ import {
   prewarmAudio,
   setMasterVolume,
   setReverbEnabled,
+  setPcInstrumentBlocked,
 } from './lib/audio.js';
 
 const ACCURACY_UNLOCK = 0.9;
 const LESSON_LENGTH = 36;
+
+/** True when the event target is a field where typing should not play notes. */
+function isTypingContext(target) {
+  if (target == null || typeof Element === 'undefined') return false;
+  const el = /** @type {Element} */ (target);
+  const tag = el.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (
+    /** @type {HTMLElement} */ (el).isContentEditable ||
+    el.getAttribute?.('contenteditable') === 'true'
+  ) {
+    return true;
+  }
+  return false;
+}
 
 export default function App() {
   const [notation, setNotation] = useState('english');
@@ -157,7 +173,10 @@ export default function App() {
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.repeat) return;
+      const typing = isTypingContext(e.target);
+
       if (e.key === 'Enter') {
+        if (typing || modeRef.current === 'library') return;
         e.preventDefault();
         prewarmAudio();
         setActive(true);
@@ -171,6 +190,7 @@ export default function App() {
 
       const midi = PC_KEY_MAP[e.code];
       if (midi == null) return;
+      if (typing || modeRef.current === 'library') return;
       e.preventDefault();
 
       const { transpose: tr, octaveShift: oct, reeds: r } = cfgRef.current;
@@ -202,6 +222,7 @@ export default function App() {
     const onKeyUp = (e) => {
       const midi = PC_KEY_MAP[e.code];
       if (midi == null) return;
+      if (isTypingContext(e.target) || modeRef.current === 'library') return;
       const { transpose: tr, octaveShift: oct, reeds: r } = cfgRef.current;
       noteOff(midi, { transpose: tr, octaveShift: oct, reeds: r });
       setActiveMidis((prev) => {
@@ -234,6 +255,7 @@ export default function App() {
 
   const onModeChange = (next) => {
     if (next === mode) return;
+    setPcInstrumentBlocked(next === 'library');
     allNotesOff();
     setActiveMidis(new Set());
     if (next !== 'learn') setActive(false);
@@ -246,6 +268,7 @@ export default function App() {
   };
 
   const onPractice = (script) => {
+    setPcInstrumentBlocked(false);
     allNotesOff();
     setActiveMidis(new Set());
     setPracticeScript(script);
@@ -259,6 +282,7 @@ export default function App() {
     setPracticeScript(null);
     reshuffle(progress);
     resetStats();
+    setPcInstrumentBlocked(true);
     setMode('library');
     allNotesOff();
     setActiveMidis(new Set());
