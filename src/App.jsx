@@ -152,12 +152,7 @@ export default function App() {
       }
 
       const midi = PC_KEY_MAP[e.code];
-      if (midi == null) {
-        if (e.code === 'Backquote') {
-          console.log('Backquote pressed - e.code:', e.code, 'e.key:', e.key);
-        }
-        return;
-      }
+      if (midi == null) return;
       e.preventDefault();
 
       const { transpose: tr, octaveShift: oct, reeds: r } = cfgRef.current;
